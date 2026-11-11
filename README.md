@@ -98,6 +98,7 @@ cd lan-nav
 - [部署与使用说明](docs/USER-GUIDE.md)：安装、启动、局域网访问、systemd 开机自启、备份恢复、
   日常使用和常见问题。
 - [技术说明](docs/TECHNICAL.md)：架构、数据模型、API、链接检测、Markdown、前端交互和测试。
+- [更新日志](CHANGELOG.md)：版本变更记录。
 
 ## 技术栈
 
