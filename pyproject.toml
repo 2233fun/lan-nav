@@ -1,0 +1,29 @@
+[project]
+name = "lan-nav"
+version = "1.0.0"
+description = "供局域网共享使用的网址导航（FastAPI + SQLite + 原生前端）"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi==0.115.14",
+    "uvicorn==0.54.0",
+    "httpx==0.28.1",
+    "markdown-it-py>=3.0.0",
+    "tomli>=2.0.1; python_version < '3.11'",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# 本机装有 ROS 环境时，其 pytest 插件会通过 PYTHONPATH 自动加载；
+# 本项目只用 pytest 基础能力，显式关闭这些外部插件以保证测试可重复。
+addopts = "-p no:launch_testing -p no:launch_ros -p no:ament_copyright -p no:ament_xmllint -p no:ament_lint -p no:ament_flake8 -p no:ament_pep257"

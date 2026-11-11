@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f7f4">
+  <title>邻页 · 局域网导航</title>
+  <meta name="description" content="供局域网共享使用的网址导航，可自由分组、收藏和编辑。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231f66e5'/%3E%3Cg fill='none' stroke='white' stroke-width='4'%3E%3Cpath d='M20 22h24M20 32h24M20 42h16'/%3E%3C/g%3E%3Ccircle cx='46' cy='42' r='5' fill='%23ffce56'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-logo" viewBox="0 0 24 24">
+      <circle cx="6.2" cy="6.6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="17.8" cy="5.8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="12" cy="17.6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M8.2 7.9 10.8 15M15.6 7.2l-2.1 8.1M8.3 6.3l7.2-.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.9"/>
+      <path d="m16 16 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24">
+      <path d="m8 10 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24">
+      <path d="M3.8 7.6c0-1 .8-1.8 1.8-1.8h4l2 2h6.8c1 0 1.8.8 1.8 1.8v7.8c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.6Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    </symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24">
+      <path d="m14.8 5.2 4 4M5 19l4.2-.9L19 8.3a1.4 1.4 0 0 0 0-2l-1.4-1.4a1.4 1.4 0 0 0-2 0L5.8 14.8 5 19Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M4.8 7h14.4M9 7V4.8h6V7m-8.1 0 .8 12.1c0 .6.5 1.1 1.1 1.1h6.4c.6 0 1.1-.5 1.1-1.1L17.1 7M10 10.8v5.4M14 10.8v5.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-up" viewBox="0 0 24 24">
+      <path d="m6 14 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-down" viewBox="0 0 24 24">
+      <path d="m6 10 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M4.3 9.6h15.4M4.3 14.4h15.4M12 4c2 2.1 3 4.8 3 8s-1 5.9-3 8c-2-2.1-3-4.8-3-8s1-5.9 3-8Z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+    <symbol id="i-external" viewBox="0 0 24 24">
+      <path d="M14 5h5v5M19 5l-7.4 7.4M18 14v4.2c0 .9-.7 1.8-1.8 1.8H5.8c-1 0-1.8-.8-1.8-1.8V7.8C4 6.8 4.8 6 5.8 6H10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-export" viewBox="0 0 24 24">
+      <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 16v2.2c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-import" viewBox="0 0 24 24">
+      <path d="M12 15V4m0 0 4 4m-4-4L8 8M5 16v2.2c0 1 .8 1.8 1.8 1.8h10.4c1 0 1.8-.8 1.8-1.8V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24">
+      <path d="M12 4 21 20H3L12 4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M12 9v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="17.3" r="1.1" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-folder-plus" viewBox="0 0 24 24">
+      <path d="M3.8 7.6c0-1 .8-1.8 1.8-1.8h4l2 2h6.8c1 0 1.8.8 1.8 1.8v7.8c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12 11v4.4M9.8 13.2h4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24">
+      <path d="M2.8 12h4.1l2.4-6.2 4.1 12.4 2.5-6.2h5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24">
+      <path d="M7 3.5h6.5L18 8v12.5H7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M13.5 3.5V8H18M9.8 12h4.4M9.8 15h4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </svg>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="icon-btn menu-toggle" id="menuToggle" type="button" aria-label="打开分组导航" aria-controls="sidebar" aria-expanded="false">
+        <svg class="icon"><use href="#i-menu"></use></svg>
+      </button>
+
+      <a class="brand" href="/" aria-label="邻页 · 局域网导航首页">
+        <span class="brand-mark"><svg class="icon"><use href="#i-logo"></use></svg></span>
+        <span class="brand-copy">
+          <strong>邻页</strong>
+          <span>局域网导航</span>
+        </span>
+      </a>
+
+      <div class="search-wrap" role="search">
+        <svg class="icon search-icon"><use href="#i-search"></use></svg>
+        <input id="searchInput" type="search" placeholder="搜索标题、网址或描述" autocomplete="off" spellcheck="false" aria-label="搜索全部链接">
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+        <button class="search-clear" id="clearSearch" type="button" aria-label="清除搜索" hidden>
+          <svg class="icon"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+
+      <div class="top-actions">
+        <label class="auto-check doc-toggle" title="在分组页面显示或隐藏 Markdown 文档">
+          <input type="checkbox" id="docToggle">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>文档</span>
+        </label>
+        <button class="btn btn-quiet new-group-top" id="newGroupTop" type="button" aria-label="新建分组">
+          <svg class="icon"><use href="#i-folder-plus"></use></svg>
+          <span class="btn-label">新建分组</span>
+        </button>
+        <button class="btn btn-primary new-link-top" id="newLinkTop" type="button" aria-label="新建链接">
+          <svg class="icon"><use href="#i-plus"></use></svg>
+          <span class="btn-label">新建链接</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <div class="scrim" id="scrim" hidden></div>
+
+      <aside class="sidebar" id="sidebar" aria-label="分组导航">
+        <div class="sidebar-scroll">
+          <div class="sidebar-heading">
+            <span>导航</span>
+            <span class="sidebar-heading-actions">
+              <button class="icon-btn subtle sidebar-close" id="sidebarClose" type="button" aria-label="关闭分组导航">
+                <svg class="icon"><use href="#i-close"></use></svg>
+              </button>
+              <button class="icon-btn subtle" id="sidebarNewGroup" type="button" aria-label="新建顶级分组" title="新建顶级分组">
+                <svg class="icon"><use href="#i-plus"></use></svg>
+              </button>
+            </span>
+          </div>
+
+          <button class="nav-all" id="allLinksNav" type="button">
+            <span class="nav-all-icon"><svg class="icon"><use href="#i-grid"></use></svg></span>
+            <span class="nav-all-text">全部链接</span>
+            <span class="count-pill" id="allCount">0</span>
+          </button>
+
+          <div class="tree-heading">
+            <span>分组</span>
+            <span class="tree-total" id="groupCount">0</span>
+          </div>
+          <nav class="group-tree" id="groupTree" aria-label="分组树"></nav>
+          <div class="tree-empty" id="treeEmpty" hidden>
+            <span>还没有分组</span>
+            <button class="text-link" id="treeEmptyCreate" type="button">建立第一个分组</button>
+          </div>
+        </div>
+
+        <div class="sidebar-foot">
+          <div class="server-state" id="serverState">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="healthText">正在连接服务…</span>
+          </div>
+          <div class="data-actions">
+            <button class="data-btn" id="exportBtn" type="button">
+              <svg class="icon"><use href="#i-export"></use></svg>
+              <span>导出</span>
+            </button>
+            <button class="data-btn" id="importBtn" type="button">
+              <svg class="icon"><use href="#i-import"></use></svg>
+              <span>导入</span>
+            </button>
+          </div>
+          <p class="local-note">局域网内任何人打开即可查看和编辑</p>
+        </div>
+      </aside>
+
+      <main class="main" id="main">
+        <div class="main-inner">
+          <div class="main-bar">
+            <nav class="breadcrumbs" id="breadcrumbs" aria-label="当前位置"></nav>
+            <div class="page-actions" id="pageActions" hidden>
+              <button class="btn btn-quiet btn-small" id="openDocsBtn" type="button" title="查看当前分组的文档" hidden>
+                <svg class="icon"><use href="#i-doc"></use></svg>
+                <span class="btn-label">文档</span>
+              </button>
+              <button class="btn btn-quiet btn-small" id="addSubgroupBtn" type="button">
+                <svg class="icon"><use href="#i-folder-plus"></use></svg>
+                <span class="btn-label">子分组</span>
+              </button>
+              <button class="icon-btn outline" id="editGroupBtn" type="button" title="编辑当前分组" aria-label="编辑当前分组">
+                <svg class="icon"><use href="#i-edit"></use></svg>
+              </button>
+              <button class="icon-btn outline danger" id="deleteGroupBtn" type="button" title="删除当前分组" aria-label="删除当前分组">
+                <svg class="icon"><use href="#i-trash"></use></svg>
+              </button>
+              <button class="btn btn-primary btn-small" id="addHereBtn" type="button" aria-label="添加链接">
+                <svg class="icon"><use href="#i-plus"></use></svg>
+                <span class="btn-label">添加链接</span>
+              </button>
+            </div>
+          </div>
+
+          <header class="page-head">
+            <div class="title-block">
+              <h1 id="pageTitle">全部链接</h1>
+              <p id="pageSummary" class="page-summary">正在整理你的局域网入口…</p>
+            </div>
+            <div class="check-tools" id="checkTools" hidden>
+              <span class="check-progress" id="checkProgress" role="status" aria-live="polite"></span>
+              <label class="auto-check" title="打开页面或切换分组时，自动检测最多 20 条尚未检测的链接">
+                <input type="checkbox" id="autoCheckToggle" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>自动检测</span>
+              </label>
+              <button class="btn btn-outline btn-small check-all-btn" id="checkAllBtn" type="button" title="检测当前列表中的全部链接">
+                <svg class="icon"><use href="#i-activity"></use></svg>
+                <span id="checkAllLabel">检测全部</span>
+              </button>
+            </div>
+          </header>
+
+          <div class="content-split" id="contentSplit">
+            <div class="links-pane" id="linksPane">
+              <div class="loading-state" id="loadingState" role="status">
+                <span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span>正在加载导航</span>
+              </div>
+
+              <div class="load-error" id="loadError" hidden>
+                <svg class="icon"><use href="#i-warning"></use></svg>
+                <h2>暂时连不上服务</h2>
+                <p>请检查设备是否在同一局域网，或稍后刷新页面。</p>
+                <button class="btn btn-primary" id="retryBtn" type="button">重新加载</button>
+              </div>
+
+              <section class="empty-state" id="emptyState" hidden aria-live="polite">
+                <div class="empty-art" aria-hidden="true">
+                  <svg viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="36" y="47" width="126" height="76" rx="13" style="fill:var(--empty-card);stroke:var(--empty-line)" stroke-width="1.5" transform="rotate(-5 99 85)"/>
+                    <rect x="68" y="30" width="126" height="76" rx="13" style="fill:var(--surface);stroke:var(--empty-line)" stroke-width="1.5"/>
+                    <circle cx="94" cy="56" r="12" style="fill:var(--empty-accent-soft)"/>
+                    <path d="M88 56h12M94 50v12" style="stroke:var(--accent)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M115 49h53M115 61h37M89 82h79M89 94h53" style="stroke:var(--empty-line-strong)" stroke-width="4" stroke-linecap="round"/>
+                    <circle cx="177" cy="100" r="24" style="fill:var(--accent)"/>
+                    <path d="m167 100 7 7 13-14" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="43" cy="33" r="4" style="fill:var(--accent)"/>
+                    <circle cx="209" cy="41" r="6" style="fill:var(--yellow)"/>
+                  </svg>
+                </div>
+                <h2 id="emptyTitle"></h2>
+                <p id="emptyText"></p>
+                <div class="empty-actions" id="emptyActions"></div>
+              </section>
+
+              <div class="link-grid" id="linkGrid"></div>
+            </div>
+
+            <aside class="docs-pane" id="docsPane" hidden aria-label="分组文档">
+              <div class="docs-head">
+                <div class="docs-heading">
+                  <h2>文档</h2>
+                  <span class="docs-meta" id="docsMeta"></span>
+                </div>
+                <div class="docs-actions">
+                  <select id="docSelect" aria-label="选择文档" title="选择文档"></select>
+                  <button class="icon-btn outline" id="docNewBtn" type="button" title="新建文档" aria-label="新建文档">
+                    <svg class="icon"><use href="#i-plus"></use></svg>
+                  </button>
+                  <button class="icon-btn outline" id="docEditBtn" type="button" title="编辑文档" aria-label="编辑文档">
+                    <svg class="icon"><use href="#i-edit"></use></svg>
+                  </button>
+                  <button class="icon-btn outline danger" id="docDeleteBtn" type="button" title="删除文档" aria-label="删除文档">
+                    <svg class="icon"><use href="#i-trash"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="doc-body" id="docBody">
+                <div class="docs-empty">正在加载文档…</div>
+              </div>
+              <div class="doc-editor" id="docEditor" hidden>
+                <div class="doc-editor-head">
+                  <input id="docNameInput" type="text" maxlength="120" placeholder="README.md" aria-label="文档文件名">
+                  <span class="doc-editor-hint">Markdown</span>
+                </div>
+                <textarea id="docContentInput" spellcheck="false" placeholder="用 Markdown 记点备忘…" aria-label="文档内容"></textarea>
+                <div class="doc-editor-actions">
+                  <span class="doc-editor-status" id="docEditorStatus"></span>
+                  <button class="btn btn-quiet btn-small" id="docCancelBtn" type="button">取消</button>
+                  <button class="btn btn-primary btn-small" id="docSaveBtn" type="button">保存</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <dialog class="modal" id="groupDialog" aria-labelledby="groupDialogTitle">
+    <form id="groupForm" method="dialog" novalidate>
+      <header class="modal-head">
+        <div>
+          <h2 id="groupDialogTitle">新建分组</h2>
+          <p class="modal-subtitle">用分组把网址整理成清晰的层级。</p>
+        </div>
+        <button class="icon-btn modal-close" type="button" data-close-dialog aria-label="关闭">
+          <svg class="icon"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <label class="field">
+          <span class="field-label">分组名称 <b>*</b></span>
+          <input name="name" type="text" maxlength="80" required autocomplete="off" placeholder="例如：常用工具">
+        </label>
+        <label class="field">
+          <span class="field-label">上级分组</span>
+          <select name="parent_id" id="groupParentSelect"></select>
+          <span class="field-hint">留空表示放在最外层。</span>
+        </label>
+        <label class="field">
+          <span class="field-label">排序值</span>
+          <input name="sort_order" type="number" step="1" inputmode="numeric" placeholder="留空自动排在最后">
+          <span class="field-hint">数字越小越靠前；同级分组之间生效。</span>
+        </label>
+      </div>
+      <footer class="modal-actions">
+        <button class="btn btn-quiet" type="button" data-close-dialog>取消</button>
+        <button class="btn btn-primary" type="submit" id="groupSubmitBtn">保存分组</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="modal modal-wide" id="linkDialog" aria-labelledby="linkDialogTitle">
+    <form id="linkForm" method="dialog" novalidate>
+      <header class="modal-head">
+        <div>
+          <h2 id="linkDialogTitle">新建链接</h2>
+          <p class="modal-subtitle">添加一个局域网或互联网入口。</p>
+        </div>
+        <button class="icon-btn modal-close" type="button" data-close-dialog aria-label="关闭">
+          <svg class="icon"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <div class="form-grid">
+          <label class="field">
+            <span class="field-label">标题 <b>*</b></span>
+            <input name="title" type="text" maxlength="200" required autocomplete="off" placeholder="例如：NAS 管理面板">
+          </label>
+          <label class="field">
+            <span class="field-label">所属分组 <b>*</b></span>
+            <select name="group_id" id="linkGroupSelect" required></select>
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">网址 <b>*</b></span>
+          <input name="url" type="text" inputmode="url" maxlength="2000" required autocomplete="off" spellcheck="false" placeholder="https://example.com 或 http://192.168.1.10:8080">
+          <span class="field-hint">支持 http / https，以及带端口的局域网地址；不写协议时自动补 http://。</span>
+        </label>
+        <label class="field">
+          <span class="field-label">描述</span>
+          <textarea name="description" rows="3" maxlength="1000" placeholder="这个入口是做什么的？方便其他人快速理解。"></textarea>
+        </label>
+        <div class="form-grid">
+          <label class="field">
+            <span class="field-label">图标地址</span>
+            <input name="icon" type="text" inputmode="url" maxlength="2000" autocomplete="off" spellcheck="false" placeholder="留空则自动获取网站图标">
+            <span class="field-hint">可填入一张图片的 http(s) 地址。</span>
+          </label>
+          <label class="field">
+            <span class="field-label">排序值</span>
+            <input name="sort_order" type="number" step="1" inputmode="numeric" placeholder="留空自动排在最后">
+            <span class="field-hint">数字越小越靠前。</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-error" id="linkFormError" role="alert" hidden></div>
+      <footer class="modal-actions">
+        <button class="btn btn-quiet" type="button" data-close-dialog>取消</button>
+        <button class="btn btn-primary" type="submit" id="linkSubmitBtn">保存链接</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="modal confirm-modal" id="confirmDialog" aria-labelledby="confirmTitle">
+    <div class="confirm-icon" id="confirmIcon">
+      <svg class="icon"><use href="#i-warning"></use></svg>
+    </div>
+    <h2 id="confirmTitle">确认操作</h2>
+    <p id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="btn btn-quiet" type="button" id="confirmCancel">取消</button>
+      <button class="btn btn-danger" type="button" id="confirmOk">确认删除</button>
+    </div>
+  </dialog>
+
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+</body>
+</html>
