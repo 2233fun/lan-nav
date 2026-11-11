@@ -600,16 +600,26 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 
 ### 10.2 卡片点击
 
-卡片不是靠 JS 监听点击后 `window.open()`，而是在卡片内放置一个覆盖整张卡片的原生
-`<a target="_blank">`：
+卡片本身就是唯一一个原生 `<a target="_blank">`，再用 `::after` 拉伸铺满整张卡片
+（stretched link），不使用 JS `window.open()` 或合成 `click()`：
 
 ```html
-<a class="card-overlay" href="..." target="_blank" rel="noopener noreferrer"></a>
+<a class="link-body" href="..." target="_blank" rel="noopener noreferrer">…</a>
 ```
 
-- 浏览器原生导航，不受弹窗拦截策略影响；
-- 检测徽章和右上角操作按钮通过更高的 `z-index` 和 `pointer-events` 保持独立可点；
+```css
+.link-body::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+```
+
+- 浏览器原生导航，不受弹窗拦截策略影响，Cmd/Ctrl/Shift 点击和右键菜单也保持原生语义；
+- 卡片右上角操作按钮默认 `visibility: hidden` + `pointer-events: none`，只有卡片
+  `:hover` / `:focus-within` 时才显示并可点。`visibility` 与透明度同时切换，
+  不存在“看得见之前已经能点”的窗口，避免不可见按钮抢走卡片链接的点击
+  （Safari 的 `:hover` 更新较晚时尤其明显）；
+- 检测徽章通过更高的 `z-index` 和 `pointer-events: auto` 保持独立可点；
 - 图片和锚点设置 `draggable=false`，避免浏览器原生拖拽抢占手势；
+- 极少数落在卡片 1px 边框或圆角边缘的点击由 `#linkGrid` 的点击兜底处理：
+  触发卡片内原生链接的 `click()`，避免边缘静默无响应；
 - 长按拖动期间会抑制随后的 `click`，避免松手时误打开链接。
 
 ### 10.3 链接弹窗
@@ -625,8 +635,9 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 只在具体分组页面启用，且只响应鼠标左键：
 
 1. `pointerdown` 启动 450 ms 定时器；
-2. 移动超过 8 px 取消长按；
-3. 定时器触发后进入拖动状态；
+2. 定时器触发后只进入“预备拖动”（armed）状态，不改变界面；
+3. 预备状态下指针移动超过 8 px 才真正进入拖动；预备前就移动，或松开时始终没有移动，
+   都按普通点击处理；
 4. 创建占位块和拖动幽灵，隐藏原卡片；
 5. 在 `pointermove` 中根据指针位置移动占位块；
 6. 靠近滚动区域边缘时自动滚动；
@@ -641,6 +652,7 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 - 指针取消事件。
 
 拖动结束后 250 ms 内抑制 `#linkGrid` 内的点击，避免松手触发卡片导航。
+只按住、不移动指针不会进入拖动状态，长按后直接松手仍然会正常打开链接。
 “全部链接”和搜索结果页不启用拖动，避免跨分组歧义。
 
 ### 10.5 文档栏

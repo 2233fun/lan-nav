@@ -424,6 +424,10 @@ def create_app(
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
+        elif request.url.path == "/" or request.url.path.startswith("/static/"):
+            # 前端资源总是先向服务端校验（ETag/Last-Modified），
+            # 避免 Safari 等浏览器长期使用缓存里的旧 JS/CSS。
+            response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
     @app.exception_handler(StarletteHTTPException)

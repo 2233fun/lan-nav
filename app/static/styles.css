@@ -1426,15 +1426,6 @@ p {
   animation: card-in 0.24s ease both;
 }
 
-/* 覆盖整张卡片的原生链接：避免用 JS 打开新窗口，Safari 下更稳定 */
-.card-overlay {
-  position: absolute;
-  inset: -1px; /* 连 1px 边框也覆盖，避免点在边缘时落到卡片本身 */
-  z-index: 1;
-  border-radius: inherit;
-  cursor: pointer;
-}
-
 .link-card.is-drag-origin {
   display: none;
 }
@@ -1478,6 +1469,8 @@ body.is-card-dragging * {
   box-shadow: var(--shadow-md);
 }
 
+/* 整张卡片就是这一个原生链接：::after 拉伸铺满卡片（stretched link），
+   浏览器自己处理新标签页、Cmd/Ctrl/Shift 点击和右键菜单，不经过 JS window.open。 */
 .link-body {
   display: flex;
   gap: 13px;
@@ -1486,6 +1479,13 @@ body.is-card-dragging * {
   padding: 17px 79px 8px 19px;
   color: inherit;
   text-decoration: none;
+}
+
+.link-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .link-card.has-reorder .link-body {
@@ -1675,20 +1675,31 @@ body.is-card-dragging * {
   background: color-mix(in srgb, var(--surface) 90%, transparent);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(8px);
+  /* 不可见 = 不可点：visibility 与透明度同时切换，避免淡入的那一瞬间
+     按钮已经能接收点击、但用户还看不见。 */
+  visibility: hidden;
   opacity: 0;
   transform: translateY(-3px);
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  transition: transform 0.14s ease;
   pointer-events: none;
 }
 
+/* 不可见的操作按钮绝不能抢卡片链接的点击（Safari 尤其容易在 :hover
+   生效前点中它们）。只有工具条真正显示时才恢复可点。 */
 .card-tool {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .link-card:hover .card-tools,
 .link-card:focus-within .card-tools {
+  visibility: visible;
   opacity: 1;
   transform: none;
+}
+
+.link-card:hover .card-tool,
+.link-card:focus-within .card-tool {
+  pointer-events: auto;
 }
 
 .card-tool {
@@ -2461,8 +2472,13 @@ mark {
 
 @media (hover: none) {
   .card-tools {
+    visibility: visible;
     opacity: 1;
     transform: none;
+  }
+
+  .card-tool {
+    pointer-events: auto;
   }
 
   .tree-actions {

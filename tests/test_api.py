@@ -18,10 +18,12 @@ def test_health_and_static_page(client: TestClient):
     assert page.status_code == 200
     assert "text/html" in page.headers["content-type"]
     assert "邻页" in page.text
+    assert page.headers["cache-control"] == "no-cache"
 
     script = client.get("/static/app.js")
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]
+    assert script.headers["cache-control"] == "no-cache"
 
 
 def test_three_level_groups_and_tree_counts(client: TestClient):

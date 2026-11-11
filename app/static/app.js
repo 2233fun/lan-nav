@@ -949,16 +949,20 @@ function createLinkCard(entry, index, total, options) {
   const { link, group, path } = entry;
   const card = el("article", "link-card");
   card.dataset.linkId = String(link.id);
-  card.dataset.linkUrl = link.url;
   card.classList.add(`tone-${toneFor(group)}`);
   if (options.canReorder) card.classList.add("has-reorder");
 
+  // 整张卡片就是一个原生链接：浏览器自己处理新标签页、Cmd/Ctrl 点击和右键菜单，
+  // 不依赖 JS 打开窗口，也就不会被 Safari 的弹窗拦截策略杀掉。
   const anchor = document.createElement("a");
   anchor.className = "link-body";
   anchor.href = link.url;
   anchor.target = "_blank";
   anchor.rel = "noopener noreferrer";
-  anchor.title = `在新标签页打开 ${link.url}`;
+  anchor.setAttribute("aria-label", link.title);
+  anchor.title = options.canReorder
+    ? `在新标签页打开 ${link.url}（长按并拖动卡片可排序）`
+    : `在新标签页打开 ${link.url}`;
   anchor.draggable = false;
 
   const favicon = el("span", "favicon");
@@ -1029,20 +1033,6 @@ function createLinkCard(entry, index, total, options) {
   tools.append(edit, remove);
   card.append(tools);
 
-  // 整卡覆盖一层原生链接，避免 JS 打开新标签页被 Safari 间歇性拦截
-  const overlay = document.createElement("a");
-  overlay.className = "card-overlay";
-  overlay.href = link.url;
-  overlay.target = "_blank";
-  overlay.rel = "noopener noreferrer";
-  overlay.tabIndex = -1;
-  overlay.setAttribute("aria-hidden", "true");
-  overlay.title = options.canReorder
-    ? `在新标签页打开 ${link.url}（长按卡片可拖动排序）`
-    : `在新标签页打开 ${link.url}`;
-  overlay.draggable = false;
-  card.append(overlay);
-
   return card;
 }
 
@@ -1067,18 +1057,6 @@ function shortUrl(url) {
   } catch {
     return url;
   }
-}
-
-function openExternalLink(url) {
-  if (!url) return;
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.target = "_blank";
-  anchor.rel = "noopener noreferrer";
-  anchor.style.display = "none";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
 }
 
 function faviconUrl(url) {
@@ -1824,21 +1802,31 @@ function onCardPointerDown(event) {
     width: rect.width,
     height: rect.height,
     startIndex: cards.indexOf(card),
+    armed: false,
     dragging: false,
-    timer: window.setTimeout(startCardDrag, LONG_PRESS_MS),
+    timer: window.setTimeout(armCardDrag, LONG_PRESS_MS),
     placeholder: null,
     ghost: null,
+    captured: false,
   };
 }
 
-function startCardDrag() {
+// 长按只进入“预备拖动”状态；必须继续移动指针才真正开始拖动。
+// 这样按住超过 450ms 再松手仍然是一次普通点击，不会吞掉跳转。
+function armCardDrag() {
   const drag = state.dragState;
   if (!drag || drag.dragging) return;
-  drag.dragging = true;
+  drag.armed = true;
   drag.timer = null;
+}
+
+function beginCardDrag(event) {
+  const drag = state.dragState;
+  if (!drag || drag.dragging || !drag.armed) return;
+  drag.dragging = true;
   window.getSelection()?.removeAllRanges();
 
-  const { card, width, height, startX, startY, offsetX, offsetY } = drag;
+  const { card, width, height, offsetX, offsetY } = drag;
   const placeholder = document.createElement("div");
   placeholder.className = "link-drop-placeholder";
   placeholder.style.height = `${height}px`;
@@ -1850,9 +1838,8 @@ function startCardDrag() {
   ghost.setAttribute("aria-hidden", "true");
   ghost.style.width = `${width}px`;
   ghost.style.height = `${height}px`;
-  ghost.style.left = `${startX - offsetX}px`;
-  ghost.style.top = `${startY - offsetY}px`;
-  ghost.querySelectorAll(".card-overlay").forEach((node) => node.remove());
+  ghost.style.left = `${event.clientX - offsetX}px`;
+  ghost.style.top = `${event.clientY - offsetY}px`;
   document.body.append(ghost);
 
   try {
@@ -1871,15 +1858,21 @@ function startCardDrag() {
 function onCardPointerMove(event) {
   const drag = state.dragState;
   if (!drag) return;
+
   if (!drag.dragging) {
-    if (
+    const moved =
       Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >
-      DRAG_TOLERANCE_PX
-    ) {
-      window.clearTimeout(drag.timer);
-      state.dragState = null;
+      DRAG_TOLERANCE_PX;
+    if (!drag.armed) {
+      // 长按计时还没到就移动了指针：按普通点击/选择处理，不再进入拖动。
+      if (moved) {
+        window.clearTimeout(drag.timer);
+        state.dragState = null;
+      }
+      return;
     }
-    return;
+    if (!moved) return;
+    beginCardDrag(event);
   }
 
   event.preventDefault();
@@ -2368,11 +2361,12 @@ function bindEvents() {
 
   els.linkGrid.addEventListener("click", (event) => {
     if (!(event.target instanceof Element)) return;
-    const card = event.target.closest("[data-link-id]");
-    if (!card) return;
 
+    // 卡片内的操作按钮
     const target = event.target.closest("button[data-action]");
     if (target) {
+      const card = target.closest("[data-link-id]");
+      if (!card) return;
       const linkId = Number(card.dataset.linkId);
       const action = target.dataset.action;
       if (action === "up" || action === "down") moveLink(linkId, action);
@@ -2382,11 +2376,22 @@ function bindEvents() {
       return;
     }
 
-    // 链接本体由浏览器原生处理（新标签页、Cmd/Ctrl 点击等）
-    if (event.target.closest("a")) return;
-
-    // 兜底：极少数点不到覆盖层的情况也直接打开，避免静默无响应
-    openExternalLink(card.dataset.linkUrl);
+    // 正常情况由卡片里的原生链接自己处理，不会走到这里。
+    // 兜底覆盖：1px 边框、圆角边缘，或 Safari 未把拉伸伪元素算进命中测试。
+    const card = event.target.closest("[data-link-id]");
+    if (!card) return;
+    if (event.target.closest("a[href]")) return;
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    const link = card.querySelector("a.link-body[href]");
+    if (link) link.click();
   });
 
   els.linkGrid.addEventListener("pointerdown", onCardPointerDown);
@@ -2416,7 +2421,7 @@ function bindEvents() {
   );
   window.addEventListener("blur", cancelCardDrag);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.dragState?.dragging) {
+    if (event.key === "Escape" && state.dragState) {
       event.preventDefault();
       cancelCardDrag();
     }
