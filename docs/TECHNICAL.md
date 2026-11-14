@@ -32,6 +32,7 @@
 FastAPI 应用
   ├── /api/*        JSON API
   ├── /             单页入口
+  ├── /changelog    更新日志（读取 CHANGELOG.md 并渲染）
   ├── /static/*     静态资源
   ├── SQLite        分组 / 链接 / 文档
   └── HTTPX         服务端发起链接连通性检测
@@ -402,7 +403,7 @@ GET /api/openapi.json
 {
   "format": "lan-nav-export",
   "version": 1,
-  "app_version": "1.0.0",
+  "app_version": "1.0.1",
   "exported_at": "2026-11-11T05:00:00Z",
   "groups": [],
   "links": [],
@@ -707,6 +708,14 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 - 使用 `prefers-color-scheme` 适配浅色/深色模式；
 - 不依赖外部字体、图标库或 CDN；图标使用内联 SVG symbol。
 
+### 10.8 更新日志页
+
+- 侧栏左下角版本状态右侧的图标链接到 `/changelog`，新标签页打开；
+- 路由每次请求读取仓库根目录的 `CHANGELOG.md`，用同一个 `render_markdown()` 渲染，
+  Markdown 中的 HTML 被禁用；
+- 页面复用 `/static/styles.css`，支持浅色/深色和移动端，顶部提供「返回导航」；
+- 响应头与首页一致返回 `Cache-Control: no-cache`，修改 CHANGELOG 后刷新即可看到。
+
 ## 11. 备份、恢复与导入
 
 ### 11.1 在线备份
@@ -749,7 +758,7 @@ uv run python -m app.backup restore \
 uv run pytest
 ```
 
-当前共 **25 个测试通过**，覆盖：
+当前共 **26 个测试通过**，覆盖：
 
 - 三层分组创建与树计数；
 - 分组移动防环、级联删除；

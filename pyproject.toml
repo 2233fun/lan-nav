@@ -1,6 +1,6 @@
 [project]
 name = "lan-nav"
-version = "1.0.0"
+version = "1.0.1"
 description = "供局域网共享使用的网址导航（FastAPI + SQLite + 原生前端）"
 readme = "README.md"
 license = "Apache-2.0"

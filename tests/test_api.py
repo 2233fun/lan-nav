@@ -26,6 +26,20 @@ def test_health_and_static_page(client: TestClient):
     assert script.headers["cache-control"] == "no-cache"
 
 
+def test_changelog_page(client: TestClient):
+    page = client.get("/changelog")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert page.headers["cache-control"] == "no-cache"
+    assert "更新日志" in page.text
+    assert "返回导航" in page.text
+    assert "1.0.1" in page.text
+    assert "复制" in page.text
+    # Markdown 被渲染成 HTML，而不是原样输出
+    assert "<h2>" in page.text
+    assert "## [1.0.0]" not in page.text
+
+
 def test_three_level_groups_and_tree_counts(client: TestClient):
     root = make_group(client, "工作台", sort_order=20)
     child = make_group(client, "内部系统", parent_id=root["id"], sort_order=20)

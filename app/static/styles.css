@@ -852,6 +852,30 @@ p {
   font-size: 11.5px;
 }
 
+.changelog-link {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  border-radius: 6px;
+  color: var(--faint);
+  text-decoration: none;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.changelog-link:hover,
+.changelog-link:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.changelog-link .icon {
+  width: 15px;
+  height: 15px;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;
@@ -2184,6 +2208,72 @@ mark {
 
 .toast.is-error .toast-dot {
   background: var(--danger);
+}
+
+/* ---------- 更新日志页 ---------- */
+
+.changelog-body {
+  padding: 44px 20px 72px;
+}
+
+.changelog-page {
+  width: min(820px, 100%);
+  margin: 0 auto;
+}
+
+.changelog-head {
+  margin-bottom: 26px;
+}
+
+.changelog-back {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.changelog-back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.changelog-head h1 {
+  margin: 16px 0 6px;
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.changelog-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.changelog-content {
+  padding: 26px 30px 30px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 页面头部已经有「更新日志」标题，正文里的同名 H1 不再重复显示。 */
+.changelog-content > h1:first-child {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .changelog-body {
+    padding: 26px 14px 48px;
+  }
+
+  .changelog-content {
+    padding: 20px 18px 22px;
+    border-radius: 14px;
+  }
 }
 
 /* ---------- 响应式 ---------- */

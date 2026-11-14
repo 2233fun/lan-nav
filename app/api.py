@@ -1,6 +1,7 @@
 """LanNav 局域网网址导航 —— FastAPI 后端。"""
 
 import asyncio
+import html
 import re
 import sqlite3
 from collections.abc import Generator
@@ -11,7 +12,7 @@ from urllib.parse import urlsplit
 from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from markdown_it import MarkdownIt
 from pydantic import BaseModel, Field
@@ -19,7 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .backup import backup_database
 from .checker import LinkChecker
-from .config import PROJECT_ROOT, Settings, load_settings
+from .config import PROJECT_ROOT, Settings, get_version, load_settings
 from .db import (
     build_tree,
     connect,
@@ -41,7 +42,15 @@ from .db import (
 )
 
 STATIC_DIR = PROJECT_ROOT / "app" / "static"
+CHANGELOG_FILE = PROJECT_ROOT / "CHANGELOG.md"
 SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://")
+FAVICON_DATA_URI = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    "%3Crect width='64' height='64' rx='16' fill='%231f66e5'/%3E"
+    "%3Cg fill='none' stroke='white' stroke-width='4'%3E"
+    "%3Cpath d='M20 22h24M20 32h24M20 42h16'/%3E%3C/g%3E"
+    "%3Ccircle cx='46' cy='42' r='5' fill='%23ffce56'/%3E%3C/svg%3E"
+)
 
 
 class GroupCreate(BaseModel):
@@ -105,6 +114,38 @@ MARKDOWN = (
 
 def render_markdown(source: str) -> str:
     return MARKDOWN.render(source or "")
+
+
+def render_changelog_page() -> str:
+    """把仓库根目录的 CHANGELOG.md 渲染成一个独立的只读页面。"""
+    try:
+        source = CHANGELOG_FILE.read_text(encoding="utf-8")
+    except OSError:
+        source = "# 更新日志\n\n暂时无法读取更新日志文件。"
+    content = render_markdown(source)
+    version = html.escape(get_version())
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>更新日志 · 邻页</title>
+  <meta name="description" content="邻页 · 局域网导航的版本更新记录。">
+  <link rel="icon" href="{FAVICON_DATA_URI}">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="changelog-body">
+  <main class="changelog-page">
+    <header class="changelog-head">
+      <a class="changelog-back" href="/">← 返回导航</a>
+      <h1>更新日志</h1>
+      <p>邻页 · 局域网导航 · 当前版本 v{version}</p>
+    </header>
+    <article class="markdown-body changelog-content">{content}</article>
+  </main>
+</body>
+</html>"""
 
 
 def _load_check_targets(
@@ -424,7 +465,10 @@ def create_app(
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
-        elif request.url.path == "/" or request.url.path.startswith("/static/"):
+        elif (
+            request.url.path in {"/", "/changelog"}
+            or request.url.path.startswith("/static/")
+        ):
             # 前端资源总是先向服务端校验（ETag/Last-Modified），
             # 避免 Safari 等浏览器长期使用缓存里的旧 JS/CSS。
             response.headers.setdefault("Cache-Control", "no-cache")
@@ -833,6 +877,10 @@ def create_app(
             "documents": len(documents),
             "backup": str(backup_path),
         }
+
+    @app.get("/changelog", include_in_schema=False)
+    def changelog() -> HTMLResponse:
+        return HTMLResponse(render_changelog_page())
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:
