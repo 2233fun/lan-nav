@@ -1476,7 +1476,8 @@ body.is-card-dragging * {
   gap: 13px;
   flex: 1;
   min-width: 0;
-  padding: 17px 79px 8px 19px;
+  /* 右侧留白按 3 个操作按钮计算，避免标题被悬停出现的工具条遮住。 */
+  padding: 17px 105px 8px 19px;
   color: inherit;
   text-decoration: none;
 }
@@ -1489,7 +1490,8 @@ body.is-card-dragging * {
 }
 
 .link-card.has-reorder .link-body {
-  padding-right: 122px;
+  /* 上移 / 下移 / 复制 / 编辑 / 删除 共 5 个按钮 */
+  padding-right: 158px;
 }
 
 .favicon {
@@ -2381,11 +2383,11 @@ mark {
   }
 
   .link-body {
-    padding: 15px 58px 8px 17px;
+    padding: 15px 100px 8px 17px;
   }
 
   .link-card.has-reorder .link-body {
-    padding-right: 118px;
+    padding-right: 150px;
   }
 
   .card-meta {

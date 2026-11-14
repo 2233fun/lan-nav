@@ -1023,6 +1023,10 @@ function createLinkCard(entry, index, total, options) {
   card.append(meta);
 
   const tools = el("div", "card-tools");
+  // 复制放在最左侧（上移按钮之前）；显隐规则与其它卡片操作一致。
+  const copyButton = button("card-tool", `复制「${link.title}」的链接`, "copy");
+  copyButton.dataset.action = "copy";
+  tools.append(copyButton);
   if (options.canReorder) {
     const up = button("card-tool", "上移", "up");
     up.dataset.action = "up";
@@ -1756,6 +1760,59 @@ async function saveLink(event) {
   }
 }
 
+async function copyLink(linkId) {
+  const located = locateLink(Number(linkId));
+  if (!located) return;
+  const copied = await copyText(located.link.url);
+  if (copied) toast("链接已复制");
+  else toast("复制失败，请手动复制链接", "error");
+}
+
+// 局域网通常通过 http://IP 访问，属于非安全上下文，navigator.clipboard 不可用，
+// 需要退回 execCommand；兜底必须在用户手势内同步执行，所以这里不先 await。
+function copyText(text) {
+  const clipboard = navigator.clipboard;
+  if (window.isSecureContext && clipboard && typeof clipboard.writeText === "function") {
+    return clipboard.writeText(text).then(
+      () => true,
+      () => legacyCopyText(text)
+    );
+  }
+  return Promise.resolve(legacyCopyText(text));
+}
+
+function legacyCopyText(text) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.top = "-1000px";
+  area.style.left = "-1000px";
+  area.style.opacity = "0";
+  // iOS Safari 聚焦字号小于 16px 的输入框时会自动缩放页面。
+  area.style.fontSize = "16px";
+  document.body.append(area);
+  const active = document.activeElement;
+  const selection = document.getSelection();
+  const previous = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  }
+  area.remove();
+  if (active instanceof HTMLElement && active.isConnected) active.focus();
+  if (previous && selection) {
+    selection.removeAllRanges();
+    selection.addRange(previous);
+  }
+  return copied;
+}
+
 async function moveLink(linkId, direction) {
   const located = locateLink(linkId);
   if (!located) return;
@@ -2447,6 +2504,7 @@ function bindEvents() {
       const linkId = Number(card.dataset.linkId);
       const action = target.dataset.action;
       if (action === "up" || action === "down") moveLink(linkId, action);
+      else if (action === "copy") copyLink(linkId);
       else if (action === "check") checkSingleLink(linkId);
       else if (action === "edit") openLinkDialog(linkId);
       else if (action === "delete") deleteLink(linkId);

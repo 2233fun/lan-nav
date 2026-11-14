@@ -617,6 +617,10 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
   不存在“看得见之前已经能点”的窗口，避免不可见按钮抢走卡片链接的点击
   （Safari 的 `:hover` 更新较晚时尤其明显）；
 - 检测徽章通过更高的 `z-index` 和 `pointer-events: auto` 保持独立可点；
+- 右上角最左侧的复制按钮把 `link.url` 写入剪贴板。优先使用
+  `navigator.clipboard.writeText()`；局域网通常以 `http://IP` 访问，属于非安全上下文，
+  该 API 不可用，此时退回 `textarea + document.execCommand("copy")`，兜底在用户手势内
+  同步执行，成功后用 toast 提示；
 - 图片和锚点设置 `draggable=false`，避免浏览器原生拖拽抢占手势；
 - 极少数落在卡片 1px 边框或圆角边缘的点击由 `#linkGrid` 的点击兜底处理：
   目标在网格上时按坐标找回卡片，触发卡片内原生链接的 `click()`，避免边缘静默无响应；
