@@ -11,7 +11,11 @@ const CHECK_BATCH_SIZE = 15;
 const AUTO_CHECK_LIMIT = 20;
 const CHECK_TTL_MS = 60_000;
 const LONG_PRESS_MS = 450;
+// 页面被节流/挂起后恢复时，长按定时器可能晚于 pointerup 才执行。
+// 超过这个时长还触发的定时器不再视为“用户有意长按”。
+const LONG_PRESS_MAX_MS = 700;
 const DRAG_TOLERANCE_PX = 8;
+const CLICK_SUPPRESS_MS = 250;
 
 const state = {
   tree: { groups: [], total_groups: 0, total_links: 0 },
@@ -41,7 +45,9 @@ const state = {
   docEditingId: null,
   docsRequestId: 0,
   dragState: null,
-  suppressClick: false,
+  // 拖动结束后的那一次 click 需要抑制。用时间戳而不是布尔值 + setTimeout：
+  // Safari 在页面挂起/后台时会推迟定时器，布尔值可能一直残留到用户回来后的第一次点击。
+  suppressClickUntil: 0,
 };
 
 const els = {};
@@ -1783,11 +1789,15 @@ function canDragCards() {
 
 function onCardPointerDown(event) {
   if (event.button !== 0 || event.pointerType !== "mouse") return;
-  if (!canDragCards() || state.dragState) return;
+  if (!canDragCards()) return;
   if (!(event.target instanceof Element)) return;
   if (event.target.closest("button")) return;
   const card = event.target.closest(".link-card");
   if (!card) return;
+
+  // 上一次交互可能在页面挂起/失焦时丢掉了 pointerup。先清掉残留状态，
+  // 否则它既会挡住这次拖动，也可能让随后的 click 被误判。
+  if (state.dragState) resetInteractionState();
 
   const rect = card.getBoundingClientRect();
   const cards = [...els.linkGrid.querySelectorAll(".link-card")];
@@ -1808,6 +1818,9 @@ function onCardPointerDown(event) {
     placeholder: null,
     ghost: null,
     captured: false,
+    // 输入事件自带的时间戳，比 JS 定时器更能反映用户真实按了多久。
+    downTimeStamp: event.timeStamp,
+    downWall: Date.now(),
   };
 }
 
@@ -1816,8 +1829,14 @@ function onCardPointerDown(event) {
 function armCardDrag() {
   const drag = state.dragState;
   if (!drag || drag.dragging) return;
-  drag.armed = true;
   drag.timer = null;
+  // 定时器明显迟到说明页面刚被节流或从挂起恢复，补发的定时器不能把
+  // 一次普通点击升级成长按拖动，否则后续 click 会被抑制，卡片点不动。
+  if (Date.now() - drag.downWall > LONG_PRESS_MAX_MS) {
+    resetInteractionState();
+    return;
+  }
+  drag.armed = true;
 }
 
 function beginCardDrag(event) {
@@ -1857,9 +1876,15 @@ function beginCardDrag(event) {
 
 function onCardPointerMove(event) {
   const drag = state.dragState;
-  if (!drag) return;
+  if (!drag || event.pointerId !== drag.pointerId) return;
 
   if (!drag.dragging) {
+    // 鼠标键已经松开（例如 Safari 丢掉了 pointerup）：这次操作就是一次点击，
+    // 不要开启拖动，更不能创建幽灵卡片。
+    if (!(event.buttons & 1)) {
+      resetInteractionState();
+      return;
+    }
     const moved =
       Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >
       DRAG_TOLERANCE_PX;
@@ -1873,6 +1898,10 @@ function onCardPointerMove(event) {
     }
     if (!moved) return;
     beginCardDrag(event);
+  } else if (!(event.buttons & 1)) {
+    // 拖动过程中丢了 pointerup：按最后的位置结束拖动，避免幽灵卡片一直留在页面上。
+    finishCardDrag();
+    return;
   }
 
   event.preventDefault();
@@ -1909,8 +1938,19 @@ function onCardPointerUp(event) {
   if (!drag) return;
   if (event.pointerId !== drag.pointerId) return;
   if (!drag.dragging) {
-    window.clearTimeout(drag.timer);
-    state.dragState = null;
+    resetInteractionState();
+    return;
+  }
+  // 拖动是由补发的长按定时器误触发时，用户真实的按键时间可能远短于 450ms。
+  // 这种情况按普通点击处理：撤销拖动、不抑制 click，让浏览器继续打开链接。
+  const pressedMs = event.timeStamp - drag.downTimeStamp;
+  if (
+    drag.downTimeStamp > 0 &&
+    Number.isFinite(pressedMs) &&
+    pressedMs > 0 &&
+    pressedMs < LONG_PRESS_MS
+  ) {
+    resetInteractionState();
     return;
   }
   finishCardDrag();
@@ -1920,12 +1960,37 @@ function onCardPointerCancel() {
   cancelCardDrag();
 }
 
+// 清理所有“一次交互”的临时状态。页面被挂起、切到后台、从 bfcache 恢复或
+// 窗口重新获得焦点时，Safari 可能丢掉 pointerup/click；残留状态会让下一次
+// 点击被误判成拖动或直接被抑制。
+function resetInteractionState({ suppressClick = false } = {}) {
+  const drag = state.dragState;
+  if (drag) {
+    window.clearTimeout(drag.timer);
+    if (drag.captured) {
+      try {
+        document.body.releasePointerCapture(drag.pointerId);
+      } catch {
+        // 指针已释放时忽略
+      }
+    }
+    if (drag.placeholder && drag.placeholder.parentNode) {
+      drag.placeholder.replaceWith(drag.card);
+    }
+    drag.card.classList.remove("is-drag-origin");
+    drag.ghost?.remove();
+    document.body.classList.remove("is-card-dragging");
+  }
+  state.dragState = null;
+  // 生命周期清理不应吞掉用户回来后的第一次点击，只有真正结束的拖动才设置抑制。
+  state.suppressClickUntil = suppressClick ? Date.now() + CLICK_SUPPRESS_MS : 0;
+}
+
 function finishCardDrag() {
   const drag = state.dragState;
   if (!drag) return;
   if (!drag.dragging) {
-    window.clearTimeout(drag.timer);
-    state.dragState = null;
+    resetInteractionState();
     return;
   }
 
@@ -1942,10 +2007,7 @@ function finishCardDrag() {
   ghost?.remove();
   document.body.classList.remove("is-card-dragging");
   state.dragState = null;
-  state.suppressClick = true;
-  window.setTimeout(() => {
-    state.suppressClick = false;
-  }, 250);
+  state.suppressClickUntil = Date.now() + CLICK_SUPPRESS_MS;
 
   const ids = [...els.linkGrid.querySelectorAll(".link-card")].map((node) =>
     Number(node.dataset.linkId)
@@ -1964,29 +2026,9 @@ function finishCardDrag() {
 }
 
 function cancelCardDrag() {
-  const drag = state.dragState;
-  if (!drag) return;
-  window.clearTimeout(drag.timer);
-  if (drag.dragging) {
-    if (drag.captured) {
-      try {
-        document.body.releasePointerCapture(drag.pointerId);
-      } catch {
-        // 指针已释放时忽略
-      }
-    }
-    if (drag.placeholder && drag.placeholder.parentNode) {
-      drag.placeholder.replaceWith(drag.card);
-    }
-    drag.card.classList.remove("is-drag-origin");
-    drag.ghost?.remove();
-    document.body.classList.remove("is-card-dragging");
-    state.suppressClick = true;
-    window.setTimeout(() => {
-      state.suppressClick = false;
-    }, 250);
-  }
-  state.dragState = null;
+  if (!state.dragState) return;
+  const wasDragging = Boolean(state.dragState.dragging);
+  resetInteractionState({ suppressClick: wasDragging });
 }
 
 async function saveCardOrder(linkId, payload) {
@@ -2266,6 +2308,41 @@ function isTypingTarget(target) {
 
 /* ---------- 事件绑定 ---------- */
 
+// 判断一次 click 是否落在卡片区域。Safari 在指针捕获等异常状态下偶尔会把
+// click 的 target 退化成 <body>，此时只能用坐标反查。
+function clickHitsCardArea(event) {
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+  if (target.closest("#linkGrid")) return true;
+  if (target !== document.body && target !== document.documentElement) return false;
+  const under = document.elementFromPoint(event.clientX, event.clientY);
+  return under instanceof Element && Boolean(under.closest("#linkGrid"));
+}
+
+// 圆角/1px 边框处的点击会落在 #linkGrid 上，closest() 找不到卡片；
+// 用矩形包含关系按坐标补一次查找。
+function cardAtPoint(x, y) {
+  for (const card of els.linkGrid.querySelectorAll(".link-card")) {
+    const rect = card.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return card;
+    }
+  }
+  return null;
+}
+
+function cardForClick(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  const direct = target ? target.closest("[data-link-id]") : null;
+  if (direct) return direct;
+  const under = document.elementFromPoint(event.clientX, event.clientY);
+  if (!(under instanceof Element)) return null;
+  const card = under.closest("[data-link-id]");
+  if (card) return card;
+  if (under.closest("#linkGrid")) return cardAtPoint(event.clientX, event.clientY);
+  return null;
+}
+
 function bindEvents() {
   els.menuToggle.addEventListener("click", toggleSidebar);
   els.sidebarClose.addEventListener("click", closeSidebar);
@@ -2378,7 +2455,7 @@ function bindEvents() {
 
     // 正常情况由卡片里的原生链接自己处理，不会走到这里。
     // 兜底覆盖：1px 边框、圆角边缘，或 Safari 未把拉伸伪元素算进命中测试。
-    const card = event.target.closest("[data-link-id]");
+    const card = cardForClick(event);
     if (!card) return;
     if (event.target.closest("a[href]")) return;
     if (
@@ -2406,20 +2483,56 @@ function bindEvents() {
   document.addEventListener(
     "click",
     (event) => {
-      if (!state.suppressClick) return;
-      if (
-        !(event.target instanceof Element) ||
-        !event.target.closest("#linkGrid")
-      ) {
+      if (!state.suppressClickUntil) return;
+      // 时间戳已过就直接放行，不再依赖可能在后台被 Safari 推迟的 setTimeout。
+      if (Date.now() > state.suppressClickUntil) {
+        state.suppressClickUntil = 0;
         return;
       }
-      state.suppressClick = false;
+      if (!(event.target instanceof Element) || !clickHitsCardArea(event)) {
+        return;
+      }
+      state.suppressClickUntil = 0;
       event.preventDefault();
       event.stopPropagation();
     },
     true
   );
-  window.addEventListener("blur", cancelCardDrag);
+
+  // Safari 把 click 目标退化成 <body> 时，原生链接和 #linkGrid 的委托都收不到。
+  // 只要点击坐标仍在卡片上，就按坐标找回原生链接并触发，避免“点了完全没反应”。
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target !== document.body && event.target !== document.documentElement) {
+      return;
+    }
+    if (event.defaultPrevented) return;
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    if (!(under instanceof Element)) return;
+    if (under.closest("button, input, select, textarea, label, dialog")) return;
+    // 这里不能因为“命中元素本身是 <a>”就提前返回：click 的 target 已经退化成
+    // <body>，说明浏览器没有处理这次原生导航，正需要由兜底来触发。
+    const card = cardForClick(event);
+    if (!card) return;
+    const link = card.querySelector("a.link-body[href]");
+    if (link) link.click();
+  });
+
+  window.addEventListener("blur", () => resetInteractionState());
+  // 页面切到后台/挂起、从 bfcache 恢复或窗口重新聚焦时，清掉可能残留的
+  // 拖动状态；这些清理不能抑制 click，否则用户回来后的第一次点击会被吞掉。
+  document.addEventListener("visibilitychange", () => resetInteractionState());
+  window.addEventListener("pageshow", () => resetInteractionState());
+  window.addEventListener("focus", () => resetInteractionState());
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.dragState) {
       event.preventDefault();

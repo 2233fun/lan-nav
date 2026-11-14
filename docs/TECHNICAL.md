@@ -619,7 +619,10 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 - 检测徽章通过更高的 `z-index` 和 `pointer-events: auto` 保持独立可点；
 - 图片和锚点设置 `draggable=false`，避免浏览器原生拖拽抢占手势；
 - 极少数落在卡片 1px 边框或圆角边缘的点击由 `#linkGrid` 的点击兜底处理：
-  触发卡片内原生链接的 `click()`，避免边缘静默无响应；
+  目标在网格上时按坐标找回卡片，触发卡片内原生链接的 `click()`，避免边缘静默无响应；
+- Safari 在指针捕获等异常状态下偶尔会把 `click` 的 target 退化成 `<body>`。
+  `document` 上另有一个兜底：只有 target 是 `<body>/<html>` 且按坐标仍落在卡片上时，
+  才触发对应原生链接，正常点击不会重复打开；
 - 长按拖动期间会抑制随后的 `click`，避免松手时误打开链接。
 
 ### 10.3 链接弹窗
@@ -649,9 +652,26 @@ MarkdownIt("commonmark", {"html": False, "linkify": True})
 
 - 按 `Esc`；
 - 窗口失焦；
+- 页面切到后台、从 bfcache 恢复或窗口重新获得焦点；
 - 指针取消事件。
 
-拖动结束后 250 ms 内抑制 `#linkGrid` 内的点击，避免松手触发卡片导航。
+拖动结束后 250 ms 内抑制卡片区域内的点击，避免松手触发卡片导航。抑制使用
+`Date.now()` 时间戳而不是布尔值 + `setTimeout`：Safari 在标签页挂起/后台时会推迟
+定时器，布尔值可能残留到用户回来后的第一次点击，把正常跳转吞掉。
+
+页面长时间放置后，Safari 可能挂起 WebContent 进程，恢复时补发定时器和输入事件。
+为此拖动逻辑有两道保护：
+
+- 长按定时器如果比 `pointerdown` 晚 700 ms 以上才执行，说明页面刚被节流，
+  不再进入预备拖动；
+- `pointerup` 时用输入事件自带的时间戳核对真实按键时长，短于 450 ms 的“拖动”
+  视为被延迟处理普通点击：撤销拖动、不抑制 `click`，让链接照常打开。
+
+`pointermove` 还会检查 `event.buttons`：按钮已经松开（例如丢掉了 `pointerup`）
+就不再开启拖动；拖动中丢失 `pointerup` 则按最后位置结束，避免幽灵卡片残留。
+`visibilitychange`、`pageshow`、`focus`、`blur` 都会调用
+`resetInteractionState()` 清掉残留状态，且这些生命周期清理不会抑制点击。
+
 只按住、不移动指针不会进入拖动状态，长按后直接松手仍然会正常打开链接。
 “全部链接”和搜索结果页不启用拖动，避免跨分组歧义。
 
